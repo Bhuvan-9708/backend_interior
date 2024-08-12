@@ -5,11 +5,21 @@ const upload = require('../middleware/upload');
 exports.getAllBlogs = async (req, res) => {
   try {
     const blogs = await Blog.find();
-    res.json(blogs);
+
+    res.status(200).json({
+      success: true,
+      message: 'Blogs retrieved successfully',
+      data: blogs
+    });
   } catch (err) {
-    res.status(400).json({ message: err.message });
+    res.status(400).json({
+      success: false,
+      message: 'Failed to retrieve blogs',
+      error: err.message
+    });
   }
 };
+
 
 // Get a single blog
 exports.getBlogById = async (req, res) => {
