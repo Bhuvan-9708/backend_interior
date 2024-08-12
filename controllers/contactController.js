@@ -1,6 +1,7 @@
 const Contact = require('../model/contact');
 const transporter = require('../config/mailer');
 
+// Submit Contact Form
 exports.submitContactForm = async (req, res) => {
   try {
     // Extract form fields
@@ -8,9 +9,13 @@ exports.submitContactForm = async (req, res) => {
 
     // Extract file if it exists
     const file = req.file;
+
     // Validate that all required fields are provided
     if (!first_name || !last_name || !email || !phone || !location || !category) {
-      return res.status(400).json({ message: 'All form fields are required' });
+      return res.status(400).json({
+        success: false,
+        message: 'All form fields are required'
+      });
     }
 
     // Save contact form data to the database
@@ -21,7 +26,7 @@ exports.submitContactForm = async (req, res) => {
       phone: phone,
       location: location,
       category: category,
-      attachment: file ? file.path : null 
+      attachment: file ? file.path : null
     });
 
     await contact.save();
@@ -47,18 +52,33 @@ exports.submitContactForm = async (req, res) => {
 
     await transporter.sendMail(mailOptions);
 
-    res.status(200).json({ message: 'Form submitted successfully' });
+    res.status(200).json({
+      success: true,
+      message: 'Form submitted successfully'
+    });
   } catch (error) {
     console.error('Error:', error);
-    res.status(500).json({ message: 'Failed to submit form' });
+    res.status(500).json({
+      success: false,
+      message: 'Failed to submit form'
+    });
   }
 };
 
+// Get All Contact Forms
 exports.getAllMail = async (req, res) => {
   try {
     const mail = await Contact.find();
-    res.json(mail);
+    res.status(200).json({
+      success: true,
+      message: 'Contacts retrieved successfully',
+      data: mail
+    });
   } catch (err) {
-    res.status(400).json({ message: err.message });
+    res.status(500).json({
+      success: false,
+      message: 'Failed to retrieve contacts',
+      error: err.message
+    });
   }
 };

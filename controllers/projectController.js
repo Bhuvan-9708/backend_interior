@@ -2,13 +2,22 @@ const Project = require('../model/project');
 const upload = require('../middleware/upload');
 const fs = require('fs');
 const path = require('path');
+
 // Get all projects
 exports.getAllProjects = async (req, res) => {
     try {
         const projects = await Project.find();
-        res.json(projects);
+        res.status(200).json({
+            success: true,
+            message: 'Projects retrieved successfully',
+            data: projects
+        });
     } catch (err) {
-        res.status(400).json({ message: err.message });
+        res.status(400).json({
+            success: false,
+            message: 'Failed to retrieve projects',
+            error: err.message
+        });
     }
 };
 
@@ -16,63 +25,118 @@ exports.getAllProjects = async (req, res) => {
 exports.getProjectById = async (req, res) => {
     try {
         const project = await Project.findById(req.params.id);
-        if (!project) return res.status(404).json({ message: 'Project not found' });
-        res.json(project);
+        if (!project) return res.status(404).json({
+            success: false,
+            message: 'Project not found'
+        });
+        res.status(200).json({
+            success: true,
+            message: 'Project retrieved successfully',
+            data: project
+        });
     } catch (err) {
-        res.status(400).json({ message: err.message });
+        res.status(400).json({
+            success: false,
+            message: 'Failed to retrieve project',
+            error: err.message
+        });
     }
 };
 
 // Create a new project
 exports.createProject = async (req, res) => {
-
-    upload.single('project_image')(req, res, async (err) => {
-        if (err) {
-            return res.status(400).json({ message: err.message });
+    try {
+        // Check if a file was uploaded
+        if (!req.file) {
+            return res.status(400).json({
+                success: false,
+                message: 'No file uploaded'
+            });
         }
 
+        // Check required fields
+        if (!req.body.project_title || !req.body.project_description) {
+            return res.status(400).json({
+                success: false,
+                message: 'Project title and description are required'
+            });
+        }
+
+        // Create a new project
         const project = new Project({
             project_title: req.body.project_title,
             project_description: req.body.project_description,
-            project_image: req.file ? req.file.path : null
+            project_image: req.file.path // Store file path
         });
 
-        try {
-            const newProject = await project.save();
-            res.status(201).json(newProject);
-        } catch (err) {
-            res.status(400).json({ message: err.message });
-        }
-    });
+        // Save the project to the database
+        const newProject = await project.save();
+
+        res.status(201).json({
+            success: true,
+            message: 'Project created successfully',
+            data: newProject
+        });
+    } catch (err) {
+        console.error('Error:', err);
+        res.status(500).json({
+            success: false,
+            message: 'Failed to create project',
+            error: err.message
+        });
+    }
 };
 
 // Update a project
 exports.updateProject = async (req, res) => {
     try {
-
         const { id } = req.params;
         const { project_title, project_description } = req.body;
-        const file = req.file
+        const file = req.file;
 
         const project = await Project.findById(id);
-        if (!project) return res.status(404).json({ message: 'Project not found' });
-        project.project_title = project_title || project.project_title;
-        project.project_description = project_description || Project.project_description
+        if (!project) {
+            return res.status(404).json({
+                success: false,
+                message: 'Project not found'
+            });
+        }
 
+        // Update fields if new values are provided
+        if (project_title) {
+            project.project_title = project_title;
+        }
+        if (project_description) {
+            project.project_description = project_description;
+        }
+
+        // Handle file upload
         if (file) {
+            // Remove old file if it exists
             if (project.project_image) {
-                const oldFile = path.join(__dirname, '..', 'uploads', project.project_image);
-                fs.unlink(oldFile, err => {
+                const oldFilePath = path.join(__dirname, '..', 'uploads', path.basename(project.project_image));
+                fs.unlink(oldFilePath, err => {
                     if (err) console.error('Error removing old image:', err);
                 });
             }
-            project.project_image = file.filename; // Update the image filename
+            project.project_image = file.path; // Update the image path
         }
+
+        // Save the updated project
         await project.save();
-        res.status(200).json(project)
+
+        res.status(200).json({
+            success: true,
+            message: 'Project updated successfully',
+            data: project
+        });
     } catch (err) {
-        console.log(err)
-        res.status(400).json({ message: err.message });
+        console.error('Error:', err); // Better error logging
+        res.status(400).json({
+            success: false,
+            message: 'Error updating project',
+            error: err.message
+        });
     }
 };
 
@@ -80,9 +144,19 @@ exports.updateProject = async (req, res) => {
 exports.deleteProject = async (req, res) => {
     try {
         const result = await Project.findByIdAndDelete(req.params.id);
-        if (!result) return res.status(404).json({ message: 'Project not found' });
-        res.json({ message: 'Project deleted' });
+        if (!result) return res.status(404).json({
+            success: false,
+            message: 'Project not found'
+        });
+        res.status(200).json({
+            success: true,
+            message: 'Project deleted successfully'
+        });
     } catch (err) {
-        res.status(400).json({ message: err.message });
+        res.status(400).json({
+            success: false,
+            message: 'Failed to delete project',
+            error: err.message
+        });
     }
 };

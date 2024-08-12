@@ -59,8 +59,17 @@ exports.submitCareerForm = async (req, res) => {
 exports.getAllCareer = async (req, res) => {
     try {
         const career = await Career.find();
-        res.json(career);
+        res.status(200).json({
+            success: true,
+            message: 'Jobs retrieved successfully',
+            data: career
+        });
     } catch (err) {
-        res.status(400).json({ message: err.message });
+        console.error('Error:', err);
+        res.status(500).json({
+            success: false,
+            message: 'Failed to retrieve jobs',
+            error: err.message
+        });
     }
 };

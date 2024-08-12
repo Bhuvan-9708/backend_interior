@@ -8,7 +8,8 @@ exports.register = async (req, res) => {
     try {
         // Check if admin already exists
         const existingAdmin = await Admin.findOne({ email });
-        if (existingAdmin) return res.status(400).json({ message: 'Admin already exists' });
+        if (existingAdmin)
+            return res.status(400).json({ success: false, message: 'Admin already exists' });
 
         const hashedPassword = await bcrypt.hash(password, 12);
         // Create a new admin
@@ -16,10 +17,10 @@ exports.register = async (req, res) => {
         await admin.save();
 
         // Respond with success
-        res.status(201).json({ message: 'Admin registered successfully' });
+        res.status(201).json({ success: true, message: 'Admin registered successfully' });
     } catch (err) {
         console.error(err);
-        res.status(500).json({ message: 'Server error' });
+        res.status(500).json({ success: false, message: 'Server error', error: err.message });
     }
 };
 
@@ -27,13 +28,16 @@ exports.login = async (req, res) => {
     const { email, password } = req.body;
 
     try {
-        if (!email || !password) return res.status(400).json({ message: 'email and password are required' });
+        if (!email || !password)
+            return res.status(400).json({ success: false, message: 'Email and password are required' });
 
         const admin = await Admin.findOne({ email });
-        if (!admin) return res.status(404).json({ message: 'Admin not found' });
+        if (!admin)
+            return res.status(404).json({ success: false, message: 'Admin not found' });
 
         const isMatch = await bcrypt.compare(password, admin.password);
-        if (!isMatch) return res.status(400).json({ message: 'Invalid credentials' });
+        if (!isMatch)
+            return res.status(400).json({ success: false, message: 'Invalid credentials' });
 
         // Generate JWT token
         const token = jwt.sign(
@@ -42,9 +46,9 @@ exports.login = async (req, res) => {
             { expiresIn: '1h' }
         );
 
-        res.json({ token });
+        res.json({ success: true, message: 'Login successful', data: { token } });
     } catch (err) {
-        console.log("err", err)
-        res.status(500).json({ message: 'Server error' });
+        console.error(err);
+        res.status(500).json({ success: false, message: 'Server error', error: err.message });
     }
 };

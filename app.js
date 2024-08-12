@@ -3,7 +3,7 @@ const cors = require('cors');
 const path = require('path');
 const mongoose = require('mongoose');
 require('dotenv').config();
-
+const upload = require('./middleware/upload'); 
 // Import routes
 const careerRoutes = require('./routes/careerRoutes');
 const blogRoutes = require('./routes/blogRoutes');
