@@ -4,13 +4,9 @@ const transporter = require('../config/mailer');
 // Submit Contact Form
 exports.submitContactForm = async (req, res) => {
   try {
-    // Extract form fields
     const { first_name, last_name, email, phone, location, category } = req.body;
-
-    // Extract file if it exists
     const file = req.file;
 
-    // Validate that all required fields are provided
     if (!first_name || !last_name || !email || !phone || !location || !category) {
       return res.status(400).json({
         success: false,
@@ -18,7 +14,6 @@ exports.submitContactForm = async (req, res) => {
       });
     }
 
-    // Save contact form data to the database
     const contact = new Contact({
       firstName: first_name,
       lastName: last_name,
@@ -31,7 +26,6 @@ exports.submitContactForm = async (req, res) => {
 
     await contact.save();
 
-    // Prepare email options
     const mailOptions = {
       from: process.env.EMAIL_USER,
       to: 'bhuvneshkardam@gmail.com',
@@ -69,16 +63,9 @@ exports.submitContactForm = async (req, res) => {
 exports.getAllMail = async (req, res) => {
   try {
     const mail = await Contact.find();
-    res.status(200).json({
-      success: true,
-      message: 'Contacts retrieved successfully',
-      data: mail
-    });
+    res.status(200).json({ success: true, message: 'Contacts From retrieved successfully', data: mail });
   } catch (err) {
-    res.status(500).json({
-      success: false,
-      message: 'Failed to retrieve contacts',
-      error: err.message
-    });
+    console.error('Error:', err);
+    res.status(500).json({ success: false, message: 'Failed to retrieve Contacts From', error: err.message });
   }
 };

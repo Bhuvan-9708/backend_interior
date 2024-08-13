@@ -1,74 +1,50 @@
 const Blog = require('../model/blog');
-const upload = require('../middleware/upload');
+const path = require('path');
+const fs = require('fs');
 
 // Get all blogs
 exports.getAllBlogs = async (req, res) => {
   try {
     const blogs = await Blog.find();
-
     res.status(200).json({
       success: true,
       message: 'Blogs retrieved successfully',
       data: blogs
     });
   } catch (err) {
-    res.status(400).json({
-      success: false,
-      message: 'Failed to retrieve blogs',
-      error: err.message
-    });
+    res.status(400).json({ success: false, message: 'Failed to retrieve blogs', error: err.message });
   }
 };
-
 
 // Get a single blog
 exports.getBlogById = async (req, res) => {
   try {
     const blog = await Blog.findById(req.params.id);
-    if (!blog) return res.status(404).json({ message: 'Blog not found' });
-    res.json(blog);
+    if (!blog) return res.status(404).json({ success: false, message: 'Blog not found' });
+    res.status(200).json({ success: true, data: blog });
   } catch (err) {
-    res.status(400).json({ message: err.message });
+    res.status(400).json({ success: false, message: err.message });
   }
 };
 
 // Create a new blog
 exports.createBlog = async (req, res) => {
   try {
-    if (!req.file) {
-      return res.status(400).json({
-        success: false,
-        message: 'No file uploaded'
-      });
-    }
-
-    if (!req.body.title || !req.body.content) {
-      return res.status(400).json({
-        success: false,
-        message: 'Blog title and content are required'
-      });
+    const { title, content } = req.body;
+    if (!req.file || !title || !content) {
+      return res.status(400).json({ success: false, message: 'Missing required fields' });
     }
 
     const blog = new Blog({
-      title: req.body.title,
-      content: req.body.content,
-      blog_image: req.file.path // Store file path
+      title,
+      content,
+      blog_image: req.file.path
     });
 
     const newBlog = await blog.save();
-
-    res.status(201).json({
-      success: true,
-      message: 'Blog created successfully',
-      data: newBlog
-    });
+    res.status(201).json({ success: true, message: 'Blog created successfully', data: newBlog });
   } catch (err) {
-    console.error('Error:', err);
-    res.status(500).json({
-      success: false,
-      message: 'Failed to create blog',
-      error: err.message
-    });
+    res.status(500).json({ success: false, message: 'Failed to create blog', error: err.message });
   }
 };
 
@@ -79,51 +55,25 @@ exports.updateBlog = async (req, res) => {
     const { title, content } = req.body;
     const file = req.file;
 
-    // Find the existing blog
     const blog = await Blog.findById(id);
-    if (!blog) {
-      return res.status(404).json({
-        success: false,
-        message: 'Blog not found'
-      });
-    }
+    if (!blog) return res.status(404).json({ success: false, message: 'Blog not found' });
 
-    // Update fields if provided
-    if (title) {
-      blog.title = title;
-    }
-    if (content) {
-      blog.content = content;
-    }
+    if (title) blog.title = title;
+    if (content) blog.content = content;
 
-    // Handle image upload
     if (file) {
-      // Remove old image if it exists
       if (blog.blog_image) {
-        const oldFilePath = path.join(__dirname, '..', 'uploads', path.basename(blog.blog_image));
-        fs.unlink(oldFilePath, err => {
+        fs.unlink(path.join(__dirname, '..', 'uploads', path.basename(blog.blog_image)), err => {
           if (err) console.error('Error removing old image:', err);
         });
       }
-      // Update the blog's image path
       blog.blog_image = file.path;
     }
 
-    // Save the updated blog
-    await blog.save();
-
-    res.status(200).json({
-      success: true,
-      message: 'Blog updated successfully',
-      data: blog
-    });
+    const updatedBlog = await blog.save();
+    res.status(200).json({ success: true, message: 'Blog updated successfully', data: updatedBlog });
   } catch (err) {
-    console.error('Error:', err); // Better error logging
-    res.status(500).json({
-      success: false,
-      message: 'Failed to update blog',
-      error: err.message
-    });
+    res.status(500).json({ success: false, message: 'Failed to update blog', error: err.message });
   }
 };
 
@@ -131,9 +81,9 @@ exports.updateBlog = async (req, res) => {
 exports.deleteBlog = async (req, res) => {
   try {
     const result = await Blog.findByIdAndDelete(req.params.id);
-    if (!result) return res.status(404).json({ message: 'Blog not found' });
-    res.json({ message: 'Blog deleted' });
+    if (!result) return res.status(404).json({ success: false, message: 'Blog not found' });
+    res.status(200).json({ success: true, message: 'Blog deleted' });
   } catch (err) {
-    res.status(400).json({ message: err.message });
+    res.status(400).json({ success: false, message: err.message });
   }
 };
