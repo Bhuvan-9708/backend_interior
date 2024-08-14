@@ -30,18 +30,25 @@ exports.submitContactForm = async (req, res) => {
       from: process.env.EMAIL_USER,
       to: 'bhuvneshkardam@gmail.com',
       subject: 'New Contact Form Submission',
-      text: `
-        First Name: ${first_name}
-        Last Name: ${last_name}
-        Email: ${email}
-        Phone: ${phone}
-        Location: ${location}
-        Category: ${category}
-      `,
-      attachments: file ? [{
-        filename: file.originalname,
-        path: file.path
-      }] : []
+      html: `
+                <html>
+                    <body>
+                        <div style="font-family: Arial, sans-serif; background-color: #f4f4f4; padding: 20px;">
+                            <div style="max-width: 600px; margin: auto; background: #ffffff; padding: 20px; border-radius: 5px; box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);">
+                                <h1 style="text-align: center; border-bottom: 1px solid #eeeeee;">New Application Received</h1>
+                                <p><strong>First Name:</strong> ${first_name}</p>
+                                <p><strong>Last Name:</strong> ${last_name}</p>
+                                <p><strong>Email:</strong> ${email}</p>
+                                <p><strong>Phone:</strong> ${phone}</p>
+                                <p><strong>Location:</strong> ${location}</p>
+                                <p><strong>Job Title:</strong> ${category}</p>
+                                ${file ? `<p><strong>CV File:</strong> <a href="${file.path}">Download CV</a></p>` : ''}
+                                <p style="text-align: center; border-top: 1px solid #eeeeee; font-size: 12px; color: #777;">&copy; 2024 ASCHPRO. All rights reserved.</p>
+                            </div>
+                        </div>
+                    </body>
+                </html>
+            `
     };
 
     await transporter.sendMail(mailOptions);
