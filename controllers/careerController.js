@@ -57,3 +57,14 @@ exports.getAllCareer = async (req, res) => {
         res.status(500).json({ success: false, message: 'Failed to retrieve jobs', error: err.message });
     }
 };
+
+// Delete a Career form
+exports.deleteApplicationsById = async (req, res) => {
+    try {
+        const result = await Career.findByIdAndDelete(req.params.id);
+        if (!result) return res.status(404).json({ success: false, message: 'Career form not found' });
+        res.status(200).json({ success: true, message: 'Career form deleted' });
+    } catch (err) {
+        res.status(400).json({ success: false, message: err.message });
+    }
+};

@@ -76,3 +76,14 @@ exports.getAllMail = async (req, res) => {
     res.status(500).json({ success: false, message: 'Failed to retrieve Contacts From', error: err.message });
   }
 };
+
+// Delete a contact form
+exports.deleteContactForm = async (req, res) => {
+  try {
+    const result = await Contact.findByIdAndDelete(req.params.id);
+    if (!result) return res.status(404).json({ success: false, message: 'Contact form not found' });
+    res.status(200).json({ success: true, message: 'Contact form deleted' });
+  } catch (err) {
+    res.status(400).json({ success: false, message: err.message });
+  }
+};
