@@ -3,13 +3,14 @@ const cors = require('cors');
 const path = require('path');
 const mongoose = require('mongoose');
 require('dotenv').config();
-const upload = require('./middleware/upload'); 
+const upload = require('./middleware/upload');
 // Import routes
 const careerRoutes = require('./routes/careerRoutes');
 const blogRoutes = require('./routes/blogRoutes');
 const adminRoutes = require('./routes/authRoutes');
 const contactRoutes = require('./routes/contactRoutes');
 const projectRoutes = require('./routes/projectRoutes');
+const herosectionRoutes = require('./routes/herosectionRoutes');
 
 // Initialize the Express app
 const app = express();
@@ -33,5 +34,5 @@ app.use('/api/project', projectRoutes);
 app.use('/api/auth', adminRoutes);
 app.use('/api/blogs', blogRoutes);
 app.use('/api/contact', contactRoutes);
-
+app.use('/api/herosection', herosectionRoutes)
 module.exports = app;
