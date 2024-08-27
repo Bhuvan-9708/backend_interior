@@ -30,15 +30,20 @@ exports.getBlogById = async (req, res) => {
 // Create a new blog
 exports.createBlog = async (req, res) => {
   try {
-    const { title, content } = req.body;
-    if (!req.file || !title || !content) {
+    const { title, content, slug, status, author, categories } = req.body;
+
+    if (!req.file || !title || !content || !slug) {
       return res.status(400).json({ success: false, message: 'Missing required fields' });
     }
 
     const blog = new Blog({
       title,
       content,
-      blog_image: req.file.path
+      slug,
+      status: status || 'draft',
+      author: author || 'Anonymous',
+      blog_image: req.file.path,
+      categories: categories ? categories.split(',') : [],
     });
 
     const newBlog = await blog.save();
@@ -52,7 +57,7 @@ exports.createBlog = async (req, res) => {
 exports.updateBlog = async (req, res) => {
   try {
     const { id } = req.params;
-    const { title, content } = req.body;
+    const { title, content, slug, status, author, categories } = req.body;
     const file = req.file;
 
     const blog = await Blog.findById(id);
@@ -60,6 +65,10 @@ exports.updateBlog = async (req, res) => {
 
     if (title) blog.title = title;
     if (content) blog.content = content;
+    if (slug) blog.slug = slug;
+    if (status) blog.status = status;
+    if (author) blog.author = author;
+    if (categories) blog.categories = categories.split(',');
 
     if (file) {
       if (blog.blog_image) {
