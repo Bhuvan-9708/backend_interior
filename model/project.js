@@ -21,6 +21,7 @@ const projectSchema = new mongoose.Schema({
     project_title: { type: String, required: true },
     project_description: { type: String, required: true },
     project_image: { type: String },
+    project_slug: { type: String },
     project_details: projectDetailsSchema,
     createdAt: { type: Date, default: Date.now },
 });

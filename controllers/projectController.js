@@ -25,15 +25,16 @@ exports.getProjectById = async (req, res) => {
 
 exports.createProject = async (req, res) => {
     try {
-        const { project_title, project_description, project_details } = req.body;
+        const { project_title, project_description, project_slug, project_details } = req.body;
 
-        if (!req.file || !project_title || !project_description || !project_details) {
+        if (!req.file || !project_title || !project_description || !project_details || !project_slug) {
             return res.status(400).json({ success: false, message: 'Missing fields' });
         }
 
         const project = new Project({
             project_title,
             project_description,
+            project_slug,
             project_image: req.file.path,
             project_details: JSON.parse(project_details)
         });
@@ -50,7 +51,7 @@ exports.createProject = async (req, res) => {
 exports.updateProject = async (req, res) => {
     try {
         const { id } = req.params;
-        const { project_title, project_description, project_details } = req.body;
+        const { project_title, project_description, project_slug, project_details } = req.body;
         const file = req.file;
 
         const project = await Project.findById(id);
@@ -59,6 +60,7 @@ exports.updateProject = async (req, res) => {
         if (project_title) project.project_title = project_title;
         if (project_description) project.project_description = project_description;
         if (project_details) project.project_details = project_details;
+        if (project_slug) project.project_slug = project_slug;
 
         if (file) {
             if (project.project_image) {
