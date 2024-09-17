@@ -29,9 +29,9 @@ exports.getBlogBySlug = async (req, res) => {
 // Create a new blog
 exports.createBlog = async (req, res) => {
   try {
-    const { title, content, slug, status, author, categories } = req.body;
-
-    if (!req.file || !title || !content || !slug) {
+    const { title, content, status, author, categories } = req.body;
+    const slug = title.toLowerCase().replace(/ /g, '-');
+    if (!req.file || !title || !content) {
       return res.status(400).json({ success: false, message: 'Missing required fields' });
     }
 

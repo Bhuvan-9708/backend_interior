@@ -25,9 +25,10 @@ exports.getProjectById = async (req, res) => {
 
 exports.createProject = async (req, res) => {
     try {
-        const { project_title, project_description, project_slug, project_details } = req.body;
+        const { project_title, project_description, project_details } = req.body;
+        const project_slug = project_title.toLowerCase().replace(/ /g, '-');
 
-        if (!req.file || !project_title || !project_description || !project_details || !project_slug) {
+        if (!req.file || !project_title || !project_description || !project_details) {
             return res.status(400).json({ success: false, message: 'Missing fields' });
         }
 

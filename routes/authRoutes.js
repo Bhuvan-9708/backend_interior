@@ -4,9 +4,12 @@ const authController = require('../controllers/authController');
 const authMiddleware = require('../middleware/authMiddleware');
 
 
-router.post('/register', authController.register);  //working
-router.post('/login', authController.login);  //working
-router.post('/verify-opt', authController.verifyOtp);  //working
-router.get('/get-all-admin', authMiddleware, authController.getAllUser);  //working
+router.post('/register-user', authController.registerUser); 
+router.post('/login-user', authController.authUser); 
+router.post('/verify-opt', authController.verifyOtp);  
+router.post('/logout-user', authController.logoutUser);  
+
+router.post('/register-admin', authController.registerAdmin); 
+router.post('/login-admin', authController.authAdmin); 
 
 module.exports = router;

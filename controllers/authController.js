@@ -1,129 +1,199 @@
-const Admin = require('../model/admin');
-const bcrypt = require('bcrypt');
+const User = require('../model/User')
+const Admin = require('../model/Admin');
 const jwt = require('jsonwebtoken');
-const transporter = require('../config/mailer');
-const otpGenerator = require('otp-generator');
+const bcrypt = require('bcrypt');
+const crypto = require('crypto');
+const nodemailer = require('nodemailer');
 
-exports.register = async (req, res) => {
-    const { email, password } = req.body;
+const generateToken = (id) => {
+    return jwt.sign({ id }, process.env.JWT_SECRET, { expiresIn: '1d' });
+};
+
+const generateOtp = () => {
+    return Math.floor(100000 + Math.random() * 900000).toString();
+};
+
+const sendOtpEmail = (email, otp) => {
+    const transporter = nodemailer.createTransport({
+        service: 'Gmail',
+        auth: {
+            user: process.env.EMAIL_USER,
+            pass: process.env.EMAIL_PASS,
+        },
+    });
+
+    const mailOptions = {
+        from: process.env.EMAIL_USER,
+        to: email,
+        subject: 'Your OTP Code',
+        text: `Your OTP code is ${otp}. It will expire in 10 minutes.`,
+    };
+
+    return transporter.sendMail(mailOptions);
+};
+
+exports.registerUser = async (req, res) => {
+    const { name, language, pincode, phone, email, propertyLocation, whatsappOptIn, blogSubscribe } = req.body;
 
     try {
-        if (await Admin.findOne({ email })) {
-            return res.status(400).json({ success: false, message: 'Admin already exists' });
+        const userExists = await User.findOne({ email });
+        if (userExists) {
+            return res.status(400).json({ message: 'User already exists' });
         }
 
-        // Hash the password
-        const hashedPassword = await bcrypt.hash(password, 12);
-        const otp = Math.floor(100000 + Math.random() * 900000);
+        const otp = generateOtp();
+        const otpExpires = Date.now() + 10 * 60 * 1000;
 
-        const newAdmin = new Admin({
+        const user = await User.create({
+            name,
+            language,
+            pincode,
+            phone,
             email,
-            password: hashedPassword,
+            propertyLocation,
             otp,
-            otpExpiry: Date.now() + 10 * 60 * 1000 // OTP valid for 10 minutes
+            otpExpires,
+            isVerified: false,
+            whatsappOptIn,
+            blogSubscribe,
         });
 
+        await sendOtpEmail(user.email, otp);
 
-        // Save the admin document
-        await newAdmin.save();
-
-        // Send OTP via email
-        const mailOptions = {
-            from: process.env.EMAIL_USER,
-            to: process.env.EMAIL_USER, 
-            subject: 'New User Registration OTP',
-            text: `A new user with email ${email} is attempting to register. The OTP is ${otp}. It will expire in 10 minutes.`
-        };
-
-        transporter.sendMail(mailOptions, (error, info) => {
-            if (error) {
-                console.error('Error sending email:', error);
-                return res.status(500).json({ success: false, message: 'Error sending OTP email' });
-            } else {
-                console.log('Email sent:', info.response);
-                res.status(201).json({ success: true, message: 'Registration successful, please verify with OTP sent to your email' });
-            }
-        });
-
-    } catch (err) {
-        console.error(err);
-        res.status(500).json({ success: false, message: 'Server error', error: err.message });
+        res.status(201).json({ message: 'User registered. Please verify OTP sent to your email.' });
+    } catch (error) {
+        res.status(500).json({ message: 'Server error', error: error.message });
     }
 };
 
+// Verify OTP
 exports.verifyOtp = async (req, res) => {
     const { email, otp } = req.body;
 
     try {
-        if (!email || !otp) {
-            return res.status(400).json({ success: false, message: 'Email and OTP are required' });
+        const user = await User.findOne({ email });
+        if (!user) {
+            return res.status(400).json({ message: 'Invalid email or OTP' });
         }
 
-        const admin = await Admin.findOne({ email });
-        if (!admin) {
-            return res.status(404).json({ success: false, message: 'Admin not found' });
+        if (user.otp !== otp || user.otpExpires < Date.now()) {
+            return res.status(400).json({ message: 'Invalid or expired OTP' });
         }
 
-        if (admin.otp !== otp) {
-            return res.status(400).json({ success: false, message: 'Invalid OTP' });
-        }
+        user.isVerified = true;
+        user.otp = undefined;
+        user.otpExpires = undefined;
+        await user.save();
 
-        if (Date.now() > admin.otpExpiry) {
-            return res.status(400).json({ success: false, message: 'OTP has expired' });
-        }
+        const token = generateToken(user._id);
 
-        // OTP is valid, clear the OTP and expiry from the database
-        admin.otp = null;
-        admin.otpExpiry = null;
-        admin.isRegistered = true;
-        await admin.save();
-
-        res.json({ success: true, message: 'OTP verified successfully, registration complete' });
-
-    } catch (err) {
-        console.error(err);
-        res.status(500).json({ success: false, message: 'Server error', error: err.message });
+        res.status(200).json({
+            _id: user._id,
+            name: user.name,
+            email: user.email,
+            phone: user.phone,
+            token,
+            message: 'User verified successfully',
+        });
+    } catch (error) {
+        res.status(500).json({ message: 'Server error', error: error.message });
     }
 };
 
+// Login user (optional if no password)
+exports.authUser = async (req, res) => {
+    const { email, otp } = req.body;
 
-exports.login = async (req, res) => {
+    try {
+        const user = await User.findOne({ email });
+
+        if (!user) {
+            return res.status(400).json({ message: 'Invalid email or OTP' });
+        }
+
+        if (user && user.otp === otp) {
+            res.json({
+                _id: user._id,
+                name: user.name,
+                email: user.email,
+                phone: user.phone,
+                token: generateToken(user._id),
+            });
+        } else {
+            res.status(401).json({ message: 'Invalid email or OTP' });
+        }
+    } catch (error) {
+        res.status(500).json({ message: 'Server error', error: error.message });
+    }
+};
+
+// Logout User
+exports.logoutUser = async (req, res) => {
+    try {
+        const token = req.headers.authorization?.split(' ')[1];
+        if (!token) {
+            return res.status(400).json({ message: 'No token provided' });
+        }
+
+        await TokenBlacklist.create({ token });
+
+        res.status(200).json({ message: 'Logged out successfully' });
+    } catch (error) {
+        res.status(500).json({ message: error.message });
+    }
+};
+
+// Register a new admin
+exports.registerAdmin = async (req, res) => {
+    const { name, email, password } = req.body;
+
+    try {
+        const adminExists = await Admin.findOne({ email });
+        if (adminExists) {
+            return res.status(400).json({ message: 'Admin already exists' });
+        }
+
+        const hashedPassword = await bcrypt.hash(password, 12);
+
+        const admin = await Admin.create({
+            name,
+            email,
+            password: hashedPassword,
+        });
+
+        if (admin) {
+            res.status(201).json({
+                _id: admin._id,
+                name: admin.name,
+                email: admin.email,
+                token: generateToken(admin._id),
+            });
+        } else {
+            res.status(400).json({ message: 'Invalid admin data' });
+        }
+    } catch (error) {
+        res.status(500).json({ message: 'Server error', error: error.message });
+    }
+};
+
+// Login an admin
+exports.authAdmin = async (req, res) => {
     const { email, password } = req.body;
 
     try {
-        if (!email || !password) {
-            return res.status(400).json({ success: false, message: 'Email and password are required' });
-        }
-
         const admin = await Admin.findOne({ email });
-        if (!admin) {
-            return res.status(404).json({ success: false, message: 'Admin not found' });
+
+        if (admin && (await bcrypt.compare(password, admin.password))) {
+            res.json({
+                _id: admin._id,
+                name: admin.name,
+                email: admin.email,
+                token: generateToken(admin._id),
+            });
+        } else {
+            res.status(401).json({ message: 'Invalid email or password' });
         }
-
-        if (!(await bcrypt.compare(password, admin.password))) {
-            return res.status(400).json({ success: false, message: 'Invalid credentials' });
-        }
-
-        // Generate JWT
-        const token = jwt.sign({ id: admin._id, email: admin.email }, process.env.JWT_SECRET, { expiresIn: '1h' });
-
-        res.json({ success: true, message: 'Login successful', data: { token } });
-
-    } catch (err) {
-        console.error(err);
-        res.status(500).json({ success: false, message: 'Server error', error: err.message });
-    }
-};
-
-exports.getAllUser = async (req, res) => {
-    try {
-        const Admins = await Admin.find();
-        res.status(200).json({
-            success: true,
-            message: 'Admins retrieved successfully',
-            data: Admins
-        });
-    } catch (err) {
-        res.status(400).json({ success: false, message: 'Failed to retrieve Admins', error: err.message });
+    } catch (error) {
+        res.status(500).json({ message: 'Server error', error: error.message });
     }
 };
