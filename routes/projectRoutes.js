@@ -1,12 +1,12 @@
 const express = require('express');
 const router = express.Router();
 const upload = require('../middleware/upload');
-const projectController = require('../controllers/ProjectController');
+const ProjectController = require("../controllers/ProjectController");
 
-router.get('/get-all-projects', projectController.getAllProjects);
-router.get('/get-project/:id', projectController.getProjectById); //working
-router.post('/create-project', upload.any(), projectController.createProject);
-router.put('/update-project/:id', upload.any(), projectController.updateProject);
-router.delete('/delete-project/:id', projectController.deleteProject); //working
+router.get('/get-all-projects', ProjectController.getAllProjects);
+router.get('/get-project/:id', ProjectController.getProjectById); 
+router.post('/create-project', upload.any(), ProjectController.createProject);
+router.put('/update-project/:id', upload.any(), ProjectController.updateProject);
+router.delete('/delete-project/:id', ProjectController.deleteProject); 
 
 module.exports = router;
