@@ -1,29 +1,53 @@
 const mongoose = require('mongoose');
+const Schema = mongoose.Schema;
 
-const projectDetailsSchema = new mongoose.Schema({
-    about_project: {
-        title: { type: String, required: true },
-        description: { type: String, required: true },
+// Schema for each project
+const projectSchema = new Schema({
+    projectName: { type: String, required: true },
+    projectShortDescription: { type: String, required: true },
+    projectImage: { type: String, required: true }, // URL or path to the project image
+
+    // Section 1: Initial Concepts
+    sections: {
+        mainHeading: { type: String }, // For "Initial Concepts"
+        sub_sections_one: {
+            title: { type: String },
+            description: { type: String }
+        },
+        sub_sections_two: {
+            title: { type: String },
+            description: { type: String }
+        },
+        sub_sections_three: {
+            title: { type: String },
+            description: { type: String }
+        }
     },
-    about_array: [{
-        title: { type: String, required: true },
-        description: { type: String, required: true },
-    }],
-    crafting_luxurious: {
-        title: { type: String, required: true },
-        subtitle: { type: String },
-        description: { type: String, required: true },
-        youtube_link: { type: String },
-    }
-}, { _id: false });
 
-const projectSchema = new mongoose.Schema({
-    project_title: { type: String, required: true },
-    project_description: { type: String, required: true },
-    project_image: { type: String },
-    project_slug: { type: String },
-    project_details: projectDetailsSchema,
+    // Section 2: Gallery
+    gallery: {
+        heading: { type: String },
+        subheading: { type: String },
+        images: [{ type: String }] // Array of image URLs or paths
+    },
+
+    // Section 3: Project
+    projectDetails: {
+        heading: { type: String },
+        subheading: { type: String },
+        videoURL: { type: String } // URL to a project video
+    },
+
+    // Section 4: Additional Media
+    additionalMedia: {
+        title: { type: String },
+        headingDescription: { type: String },
+        description: { type: String },
+        videoLink: { type: String } // URL to another video
+    },
+
     createdAt: { type: Date, default: Date.now },
+    updatedAt: { type: Date, default: Date.now }
 });
 
 module.exports = mongoose.model('Project', projectSchema);
