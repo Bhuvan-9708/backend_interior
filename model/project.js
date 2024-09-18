@@ -5,8 +5,8 @@ const Schema = mongoose.Schema;
 const projectSchema = new Schema({
     projectName: { type: String, required: true },
     projectShortDescription: { type: String, required: true },
-    projectImage: { type: String, required: true }, // URL or path to the project image
-
+    projectImage: { type: String, required: true },
+    project_slug: { type: String, required: true },
     // Section 1: Initial Concepts
     sections: {
         mainHeading: { type: String }, // For "Initial Concepts"
