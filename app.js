@@ -35,4 +35,6 @@ app.use('/api/auth', adminRoutes);
 app.use('/api/blogs', blogRoutes);
 app.use('/api/contact', contactRoutes);
 app.use('/api/herosection', herosectionRoutes)
+
+app.use("/*",(req,res) => res.json('this is default route'))
 module.exports = app;
