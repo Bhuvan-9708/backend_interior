@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const upload = require('../middleware/upload');
-const ProjectController = require("../controllers/ProjectController");
+const ProjectController = require("../controllers/projectController");
 
 router.get('/get-all-projects', ProjectController.getAllProjects);
 router.get('/get-project/:id', ProjectController.getProjectById); 

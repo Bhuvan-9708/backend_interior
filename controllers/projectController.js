@@ -1,4 +1,4 @@
-const Project = require('../model/Project')
+const Project = require('../model/project')
 const fs = require('fs');
 const path = require('path');
 
