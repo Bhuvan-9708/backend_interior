@@ -7,9 +7,11 @@ const projectSchema = new Schema({
     projectShortDescription: { type: String, required: true },
     projectImage: { type: String, required: true },
     project_slug: { type: String, required: true },
-    // Section 1: Initial Concepts
+
+    projectType: { type: mongoose.Schema.Types.ObjectId, ref: 'ProjectType' },
+
     sections: {
-        mainHeading: { type: String }, // For "Initial Concepts"
+        mainHeading: { type: String },
         sub_sections_one: {
             title: { type: String },
             description: { type: String }
@@ -45,9 +47,8 @@ const projectSchema = new Schema({
         description: { type: String },
         videoLink: { type: String } // URL to another video
     },
-
-    createdAt: { type: Date, default: Date.now },
-    updatedAt: { type: Date, default: Date.now }
+}, {
+    timestamps: true
 });
 
 module.exports = mongoose.model('Project', projectSchema);

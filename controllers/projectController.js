@@ -1,81 +1,51 @@
 const Project = require('../model/project')
+const ProjectType = require('../model/projectType');
 const fs = require('fs');
 const path = require('path');
 
 exports.createProject = async (req, res) => {
     try {
-        const { projectName, projectShortDescription, sections, gallery, projectDetails, additionalMedia } = req.body;
+        const { projectName, projectShortDescription, sections, gallery, projectDetails, additionalMedia, projectType } = req.body;
         const project_slug = projectName.toLowerCase().replace(/ /g, '-');
 
         const projectImage = req.files.find(file => file.fieldname === 'projectImage');
         const galleryImages = req.files.filter(file => file.fieldname === 'galleryImages');
 
-        if (!projectImage || !projectName || !projectShortDescription || !sections || !gallery || !projectDetails || !additionalMedia) {
-            return res.status(400).json({
-                success: false,
-                message: 'Missing required fields or images',
-                details: {
-                    projectImage: projectImage ? 'Present' : 'Not Present',
-                    projectName: projectName ? 'Present' : 'Not Present',
-                    projectShortDescription: projectShortDescription ? 'Present' : 'Not Present',
-                    sections: sections ? 'Present' : 'Not Present',
-                    gallery: gallery ? 'Present' : 'Not Present',
-                    projectDetails: projectDetails ? 'Present' : 'Not Present',
-                    additionalMedia: additionalMedia ? 'Present' : 'Not Present'
-                }
-            });
+        let projectTypeRecord = await ProjectType.findOne({ project_type: projectType });
+        if (!projectTypeRecord) {
+            projectTypeRecord = new ProjectType({ project_type: projectType });
+            await projectTypeRecord.save();
         }
 
         const projectImagePath = path.join(__dirname, '../uploads/', projectImage.filename);
-
         const galleryImagesPaths = galleryImages.map(file => path.join(__dirname, '../uploads/', file.filename));
 
-        // Parse JSON fields
         const parsedSections = JSON.parse(sections);
         const parsedGallery = JSON.parse(gallery);
         const parsedProjectDetails = JSON.parse(projectDetails);
         const parsedAdditionalMedia = JSON.parse(additionalMedia);
 
-        // Create a new project instance
         const project = new Project({
             projectName,
             projectShortDescription,
             projectImage: projectImagePath,
             sections: {
                 mainHeading: parsedSections.mainHeading,
-                sub_sections_one: {
-                    title: parsedSections.sub_sections_one.title,
-                    description: parsedSections.sub_sections_one.description
-                },
-                sub_sections_two: {
-                    title: parsedSections.sub_sections_two.title,
-                    description: parsedSections.sub_sections_two.description
-                },
-                sub_sections_three: {
-                    title: parsedSections.sub_sections_three.title,
-                    description: parsedSections.sub_sections_three.description
-                }
+                sub_sections_one: parsedSections.sub_sections_one,
+                sub_sections_two: parsedSections.sub_sections_two,
+                sub_sections_three: parsedSections.sub_sections_three
             },
             gallery: {
                 heading: parsedGallery.heading,
                 subheading: parsedGallery.subheading,
                 images: galleryImagesPaths
             },
-            projectDetails: {
-                heading: parsedProjectDetails.heading,
-                subheading: parsedProjectDetails.subheading,
-                videoURL: parsedProjectDetails.videoURL
-            },
-            additionalMedia: {
-                title: parsedAdditionalMedia.title,
-                headingDescription: parsedAdditionalMedia.headingDescription,
-                description: parsedAdditionalMedia.description,
-                videoLink: parsedAdditionalMedia.videoLink
-            },
-            project_slug
+            projectDetails: parsedProjectDetails,
+            additionalMedia: parsedAdditionalMedia,
+            project_slug,
+            projectType: projectTypeRecord._id
         });
 
-        // Save the project
         const newProject = await project.save();
 
         res.status(201).json({ success: true, message: 'Project created successfully', data: newProject });
@@ -86,26 +56,47 @@ exports.createProject = async (req, res) => {
 };
 
 // Get all projects
-exports.getAllProjects = async (req, res) => {
+exports.handleProjects = async (req, res) => {
     try {
-        const projects = await Project.find();
+        if (req.params.slug) {
+            const project = await Project.findOne({ project_slug: req.params.slug })
+                .populate('projectType', 'project_type');
+
+            if (!project) {
+                return res.status(404).json({ success: false, message: 'Project not found' });
+            }
+
+            return res.status(200).json({ success: true, message: 'Project retrieved successfully', data: project });
+        }
+
+        if (req.params.type) {
+            const projects = await Project.find({ projectType: req.params.type })
+                .populate('projectType', 'project_type');
+
+            if (!projects.length) {
+                return res.status(404).json({ success: false, message: 'No projects found for this type' });
+            }
+
+            return res.status(200).json({ success: true, message: 'Projects retrieved successfully', data: projects });
+        }
+
+        const projects = await Project.find()
+            .populate('projectType', 'project_type');
+
         res.status(200).json({ success: true, message: 'Projects retrieved successfully', data: projects });
     } catch (err) {
         res.status(400).json({ success: false, message: 'Failed to retrieve projects', error: err.message });
     }
 };
 
-// Get a single project
-exports.getProjectById = async (req, res) => {
+exports.getAllProjectTypes = async (req, res) => {
     try {
-        const project = await Project.findById(req.params.id);
-        if (!project) return res.status(404).json({ success: false, message: 'Project not found' });
-        res.status(200).json({ success: true, message: 'Project retrieved successfully', data: project });
+        const projectTypes = await ProjectType.find();
+        res.status(200).json({ success: true, message: 'Project types retrieved successfully', data: projectTypes });
     } catch (err) {
-        res.status(400).json({ success: false, message: 'Failed to retrieve project', error: err.message });
+        res.status(400).json({ success: false, message: 'Failed to retrieve project types', error: err.message });
     }
 };
-
 // Update a project
 exports.updateProject = async (req, res) => {
     try {
