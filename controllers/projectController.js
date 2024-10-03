@@ -5,7 +5,7 @@ const path = require('path');
 
 exports.createProject = async (req, res) => {
     try {
-        const { projectName, projectShortDescription, sections, gallery, projectDetails, additionalMedia, projectType } = req.body;
+        const { projectName, projectShortDescription, sections, gallery, projectDetails, additionalMedia, projectType, type_description } = req.body;
         const project_slug = projectName.toLowerCase().replace(/ /g, '-');
 
         const projectImage = req.files.find(file => file.fieldname === 'projectImage');
@@ -13,7 +13,10 @@ exports.createProject = async (req, res) => {
 
         let projectTypeRecord = await ProjectType.findOne({ project_type: projectType });
         if (!projectTypeRecord) {
-            projectTypeRecord = new ProjectType({ project_type: projectType });
+            projectTypeRecord = new ProjectType({
+                project_type: projectType,
+                type_description 
+            });
             await projectTypeRecord.save();
         }
 

@@ -178,6 +178,7 @@ exports.registerAdmin = async (req, res) => {
 
 // Login an admin
 exports.authAdmin = async (req, res) => {
+    console.log(req.body);
     const { email, password } = req.body;
 
     try {
@@ -185,10 +186,14 @@ exports.authAdmin = async (req, res) => {
 
         if (admin && (await bcrypt.compare(password, admin.password))) {
             res.json({
-                _id: admin._id,
-                name: admin.name,
-                email: admin.email,
-                token: generateToken(admin._id),
+                success: true, 
+                message: 'Authentication successful',
+                data: { 
+                    _id: admin._id,
+                    name: admin.name,
+                    email: admin.email,
+                    token: generateToken(admin._id),
+                },
             });
         } else {
             res.status(401).json({ message: 'Invalid email or password' });
