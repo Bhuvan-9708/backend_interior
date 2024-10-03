@@ -18,7 +18,7 @@ exports.getAllBlogs = async (req, res) => {
 
 exports.getBlogBySlug = async (req, res) => {
   try {
-    const blog = await Blog.findOne({ slug: req.params.slug }); 
+    const blog = await Blog.findOne({ slug: req.params.slug });
     if (!blog) return res.status(404).json({ success: false, message: 'Blog not found' });
     res.status(200).json({ success: true, data: blog });
   } catch (err) {
@@ -29,9 +29,9 @@ exports.getBlogBySlug = async (req, res) => {
 // Create a new blog
 exports.createBlog = async (req, res) => {
   try {
-    const { title, content, status, author, categories } = req.body;
+    const { title, content, status, author, categories, short_desc } = req.body;
     const slug = title.toLowerCase().replace(/ /g, '-');
-    if (!req.file || !title || !content) {
+    if (!req.file || !title || !content || !short_desc) {
       return res.status(400).json({ success: false, message: 'Missing required fields' });
     }
 
@@ -42,6 +42,7 @@ exports.createBlog = async (req, res) => {
       status: status || 'draft',
       author: author || 'Anonymous',
       blog_image: req.file.path,
+      short_desc,
       categories: categories ? categories.split(',') : [],
     });
 
@@ -56,7 +57,7 @@ exports.createBlog = async (req, res) => {
 exports.updateBlog = async (req, res) => {
   try {
     const { id } = req.params;
-    const { title, content, slug, status, author, categories } = req.body;
+    const { title, content, slug, status, author, categories,short_desc } = req.body;
     const file = req.file;
 
     const blog = await Blog.findById(id);
@@ -65,6 +66,7 @@ exports.updateBlog = async (req, res) => {
     if (title) blog.title = title;
     if (content) blog.content = content;
     if (slug) blog.slug = slug;
+    if (short_desc) blog.short_desc = short_desc;
     if (status) blog.status = status;
     if (author) blog.author = author;
     if (categories) blog.categories = categories.split(',');
