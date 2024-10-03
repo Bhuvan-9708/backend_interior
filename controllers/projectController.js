@@ -15,7 +15,7 @@ exports.createProject = async (req, res) => {
         if (!projectTypeRecord) {
             projectTypeRecord = new ProjectType({
                 project_type: projectType,
-                type_description 
+                type_description
             });
             await projectTypeRecord.save();
         }
@@ -63,7 +63,7 @@ exports.handleProjects = async (req, res) => {
     try {
         if (req.params.slug) {
             const project = await Project.findOne({ project_slug: req.params.slug })
-                .populate('projectType', 'project_type');
+                .populate('projectType', 'project_type type_description');
 
             if (!project) {
                 return res.status(404).json({ success: false, message: 'Project not found' });
@@ -74,7 +74,7 @@ exports.handleProjects = async (req, res) => {
 
         if (req.params.type) {
             const projects = await Project.find({ projectType: req.params.type })
-                .populate('projectType', 'project_type');
+                .populate('projectType', 'project_type type_description');
 
             if (!projects.length) {
                 return res.status(404).json({ success: false, message: 'No projects found for this type' });
@@ -84,7 +84,7 @@ exports.handleProjects = async (req, res) => {
         }
 
         const projects = await Project.find()
-            .populate('projectType', 'project_type');
+            .populate('projectType', 'project_type type_description');
 
         res.status(200).json({ success: true, message: 'Projects retrieved successfully', data: projects });
     } catch (err) {
@@ -94,7 +94,7 @@ exports.handleProjects = async (req, res) => {
 
 exports.getAllProjectTypes = async (req, res) => {
     try {
-        const projectTypes = await ProjectType.find();
+        const projectTypes = await ProjectType.find({}, 'project_type type_description'); 
         res.status(200).json({ success: true, message: 'Project types retrieved successfully', data: projectTypes });
     } catch (err) {
         res.status(400).json({ success: false, message: 'Failed to retrieve project types', error: err.message });
