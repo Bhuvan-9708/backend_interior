@@ -3,7 +3,7 @@ const Schema = mongoose.Schema;
 
 const projectTypeSchema = new Schema({
     project_type: { type: String, required: true, unique: true },
-    type_description: { type: String, required: true, unique: true }
+    type_description: { type: String, unique: true }
 }, {
     timestamps: true
 });
