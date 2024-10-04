@@ -155,22 +155,55 @@ exports.registerAdmin = async (req, res) => {
 
         const hashedPassword = await bcrypt.hash(password, 12);
 
+        const otp = generateOtp();
+        const otpExpiry = Date.now() + 10 * 60 * 1000; 
+
         const admin = await Admin.create({
             name,
             email,
             password: hashedPassword,
+            otp,
+            otpExpiry,
+            isVerified: false, 
         });
 
-        if (admin) {
-            res.status(201).json({
-                _id: admin._id,
-                name: admin.name,
-                email: admin.email,
-                token: generateToken(admin._id),
-            });
-        } else {
-            res.status(400).json({ message: 'Invalid admin data' });
+        await sendOtpEmail(admin.email, otp); 
+
+        res.status(201).json({
+            message: 'Admin registered. Please verify OTP sent to your email.',
+        });
+    } catch (error) {
+        res.status(500).json({ message: 'Server error', error: error.message });
+    }
+};
+
+exports.verifyAdminOtp = async (req, res) => {
+    const { email, otp } = req.body;
+
+    try {
+        const admin = await Admin.findOne({ email });
+        if (!admin) {
+            return res.status(400).json({ message: 'Invalid email or OTP' });
         }
+
+        if (admin.otp !== otp || admin.otpExpiry < Date.now()) {
+            return res.status(400).json({ message: 'Invalid or expired OTP' });
+        }
+
+        admin.isVerified = true;
+        admin.otp = undefined; 
+        admin.otpExpiry = undefined;
+        await admin.save();
+
+        const token = generateToken(admin._id);
+
+        res.status(200).json({
+            _id: admin._id,
+            name: admin.name,
+            email: admin.email,
+            token,
+            message: 'Admin verified successfully',
+        });
     } catch (error) {
         res.status(500).json({ message: 'Server error', error: error.message });
     }
@@ -186,9 +219,9 @@ exports.authAdmin = async (req, res) => {
 
         if (admin && (await bcrypt.compare(password, admin.password))) {
             res.json({
-                success: true, 
+                success: true,
                 message: 'Authentication successful',
-                data: { 
+                data: {
                     _id: admin._id,
                     name: admin.name,
                     email: admin.email,

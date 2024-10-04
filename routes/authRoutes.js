@@ -9,6 +9,7 @@ router.post('/login-user', authController.authUser);
 router.post('/verify-opt', authController.verifyOtp);  
 router.post('/logout-user', authController.logoutUser);  
 
+router.post('/verify-otp', authController.verifyAdminOtp);  
 router.post('/register-admin', authController.registerAdmin); 
 router.post('/login-admin', authController.authAdmin); 
 
