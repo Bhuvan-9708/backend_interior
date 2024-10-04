@@ -12,5 +12,6 @@ router.post('/logout-user', authController.logoutUser);
 router.post('/verify-otp', authController.verifyAdminOtp);  
 router.post('/register-admin', authController.registerAdmin); 
 router.post('/login-admin', authController.authAdmin); 
+router.get('/get-all-admin', authController.getAllAdmin); 
 
 module.exports = router;

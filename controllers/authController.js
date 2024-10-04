@@ -235,3 +235,16 @@ exports.authAdmin = async (req, res) => {
         res.status(500).json({ message: 'Server error', error: error.message });
     }
 };
+
+exports.getAllAdmin = async (req, res) => {
+    try {
+        const Admins = await Admin.find();
+        res.status(200).json({
+            success: true,
+            message: 'Admins retrieved successfully',
+            data: Admins
+        });
+    } catch (err) {
+        res.status(400).json({ success: false, message: 'Failed to retrieve Admins', error: err.message });
+    }
+};
