@@ -1,7 +1,8 @@
 const express = require('express');
 const router = express.Router();
-const upload = require('../middleware/upload');
+// const upload = require('../middleware/upload');
 const blogController = require('../controllers/blogController');
+const { upload } = require('../middleware/cloudinaryConfig.js');
 
 // Define routes
 router.get('/get-all-blog', blogController.getAllBlogs); //working

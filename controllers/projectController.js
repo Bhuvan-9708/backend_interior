@@ -1,16 +1,17 @@
 const Project = require('../model/project')
 const ProjectType = require('../model/projectType');
-const fs = require('fs');
-const path = require('path');
+const { uploadToCloudinary } = require("../middleware/cloudinaryConfig.js");
 
 exports.createProject = async (req, res) => {
     try {
         const { projectName, projectShortDescription, sections, gallery, projectDetails, additionalMedia, projectType, type_description } = req.body;
         const project_slug = projectName.toLowerCase().replace(/ /g, '-');
 
+        // Separate project image and gallery images
         const projectImage = req.files.find(file => file.fieldname === 'projectImage');
         const galleryImages = req.files.filter(file => file.fieldname === 'galleryImages');
 
+        // Check if project type exists or create a new one
         let projectTypeRecord = await ProjectType.findOne({ project_type: projectType });
         if (!projectTypeRecord) {
             projectTypeRecord = new ProjectType({
@@ -20,18 +21,26 @@ exports.createProject = async (req, res) => {
             await projectTypeRecord.save();
         }
 
-        const projectImagePath = path.join(__dirname, '../uploads/', projectImage.filename);
-        const galleryImagesPaths = galleryImages.map(file => path.join(__dirname, '../uploads/', file.filename));
+        // Upload project image to Cloudinary
+        const projectImageUpload = await uploadToCloudinary(projectImage.buffer, 'project-images');
 
+        // Upload gallery images to Cloudinary
+        const galleryImagesUpload = await Promise.all(galleryImages.map(async (file) => {
+            const result = await uploadToCloudinary(file.buffer, 'project-images');
+            return result.secure_url;  // Extract and return only the URL as a string
+        }));
+
+        // Parse JSON fields
         const parsedSections = JSON.parse(sections);
         const parsedGallery = JSON.parse(gallery);
         const parsedProjectDetails = JSON.parse(projectDetails);
         const parsedAdditionalMedia = JSON.parse(additionalMedia);
 
+        // Create new project
         const project = new Project({
             projectName,
             projectShortDescription,
-            projectImage: projectImagePath,
+            projectImage: projectImageUpload.secure_url, // Save Cloudinary URL
             sections: {
                 mainHeading: parsedSections.mainHeading,
                 sub_sections_one: parsedSections.sub_sections_one,
@@ -41,7 +50,7 @@ exports.createProject = async (req, res) => {
             gallery: {
                 heading: parsedGallery.heading,
                 subheading: parsedGallery.subheading,
-                images: galleryImagesPaths
+                images: galleryImagesUpload // Save array of Cloudinary URLs (strings)
             },
             projectDetails: parsedProjectDetails,
             additionalMedia: parsedAdditionalMedia,
@@ -94,7 +103,7 @@ exports.handleProjects = async (req, res) => {
 
 exports.getAllProjectTypes = async (req, res) => {
     try {
-        const projectTypes = await ProjectType.find({}, 'project_type type_description'); 
+        const projectTypes = await ProjectType.find({}, 'project_type type_description');
         res.status(200).json({ success: true, message: 'Project types retrieved successfully', data: projectTypes });
     } catch (err) {
         res.status(400).json({ success: false, message: 'Failed to retrieve project types', error: err.message });
@@ -109,42 +118,32 @@ exports.updateProject = async (req, res) => {
         const project = await Project.findById(id);
         if (!project) return res.status(404).json({ success: false, message: 'Project not found' });
 
-        // Handle single project image
         const projectImage = req.files.find(file => file.fieldname === 'projectImage');
         if (projectImage) {
             if (project.projectImage) {
-                // Remove old image
-                fs.unlink(path.join(__dirname, '../uploads/', path.basename(project.projectImage)), (err) => {
-                    if (err) console.error('Error removing old project image:', err);
-                });
             }
-            project.projectImage = path.join(__dirname, '../uploads/', projectImage.filename);
+            const result = await uploadToCloudinary(projectImage.buffer, 'project-images');
+            project.projectImage = result.secure_url; 
         }
 
-        // Handle multiple gallery images
         const galleryImages = req.files.filter(file => file.fieldname === 'galleryImages');
         if (galleryImages.length > 0) {
             if (project.gallery && project.gallery.images) {
-                // Remove old gallery images
-                project.gallery.images.forEach(imgPath => {
-                    fs.unlink(path.join(__dirname, '../uploads/', path.basename(imgPath)), (err) => {
-                        if (err) console.error('Error removing old gallery image:', err);
-                    });
+                project.gallery.images.forEach(imgUrl => {
                 });
             }
-            project.gallery.images = galleryImages.map(file => path.join(__dirname, '../uploads/', file.filename));
+            const uploadedGalleryImages = await Promise.all(
+                galleryImages.map(file => uploadToCloudinary(file.buffer, 'gallery-images'))
+            );
+            project.gallery.images = uploadedGalleryImages.map(result => result.secure_url); 
         }
 
-        // Update text fields if they exist in request body
         if (projectName) {
             project.projectName = projectName;
-            // Automatically update slug when projectName is updated
             project.project_slug = projectName.toLowerCase().replace(/ /g, '-');
         }
-
         if (projectShortDescription) project.projectShortDescription = projectShortDescription;
 
-        // Parse and update JSON sections, gallery, project details, and additional media
         if (sections) {
             const parsedSections = JSON.parse(sections);
             project.sections = {

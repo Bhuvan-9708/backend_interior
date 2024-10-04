@@ -1,6 +1,7 @@
 const Blog = require('../model/blog');
 const path = require('path');
 const fs = require('fs');
+const { uploadToCloudinary } = require("../middleware/cloudinaryConfig.js");
 
 // Get all blogs
 exports.getAllBlogs = async (req, res) => {
@@ -35,13 +36,15 @@ exports.createBlog = async (req, res) => {
       return res.status(400).json({ success: false, message: 'Missing required fields' });
     }
 
+    const result = await uploadToCloudinary(req.file.buffer, 'blog-images');
+
     const blog = new Blog({
       title,
       content,
       slug,
       status: status || 'draft',
       author: author || 'Anonymous',
-      blog_image: req.file.path,
+      blog_image: result.secure_url, 
       short_desc,
       categories: categories ? categories.split(',') : [],
     });
@@ -57,7 +60,7 @@ exports.createBlog = async (req, res) => {
 exports.updateBlog = async (req, res) => {
   try {
     const { id } = req.params;
-    const { title, content, slug, status, author, categories,short_desc } = req.body;
+    const { title, content, slug, status, author, categories, short_desc } = req.body;
     const file = req.file;
 
     const blog = await Blog.findById(id);
@@ -65,7 +68,6 @@ exports.updateBlog = async (req, res) => {
 
     if (title) blog.title = title;
     if (content) blog.content = content;
-    if (slug) blog.slug = slug;
     if (short_desc) blog.short_desc = short_desc;
     if (status) blog.status = status;
     if (author) blog.author = author;
@@ -73,11 +75,10 @@ exports.updateBlog = async (req, res) => {
 
     if (file) {
       if (blog.blog_image) {
-        fs.unlink(path.join(__dirname, '..', 'uploads', path.basename(blog.blog_image)), err => {
-          if (err) console.error('Error removing old image:', err);
-        });
       }
-      blog.blog_image = file.path;
+
+      const result = await uploadToCloudinary(file.buffer, 'blog-images');
+      blog.blog_image = result.secure_url; 
     }
 
     const updatedBlog = await blog.save();
