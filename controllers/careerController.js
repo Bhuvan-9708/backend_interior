@@ -1,7 +1,7 @@
 const Career = require('../model/career');
 const transporter = require('../config/mailer');
+const { uploadToCloudinary } = require("../middleware/cloudinaryConfig.js");
 
-// Submit career form
 exports.submitCareerForm = async (req, res) => {
     try {
         const { email_address, first_name, last_name, phone_number, location, job_title } = req.body;
@@ -11,6 +11,13 @@ exports.submitCareerForm = async (req, res) => {
             return res.status(400).json({ success: false, message: 'All form fields are required' });
         }
 
+        let uploadedFileUrl = null;
+        if (file) {
+            console.log("File details: ", file);
+            const uploadResult = await uploadToCloudinary(file.buffer, 'career_resumes');
+            uploadedFileUrl = uploadResult.secure_url;  
+        }
+
         const career = new Career({
             email_address,
             first_name,
@@ -18,7 +25,7 @@ exports.submitCareerForm = async (req, res) => {
             phone_number,
             location,
             job_title,
-            resume_file: file ? file.path : null
+            resume_file: uploadedFileUrl 
         });
 
         await career.save();
@@ -35,7 +42,7 @@ exports.submitCareerForm = async (req, res) => {
             Location: ${location}
             Job Title: ${job_title}
             `,
-            attachments: file ? [{ filename: file.originalname, path: file.path }] : []
+            attachments: uploadedFileUrl ? [{ filename: file.originalname, path: uploadedFileUrl }] : [] // Attach the uploaded file URL
         };
 
         await transporter.sendMail(mailOptions);
