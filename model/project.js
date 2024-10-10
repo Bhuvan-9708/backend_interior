@@ -45,7 +45,7 @@ const projectSchema = new Schema({
         title: { type: String },
         headingDescription: { type: String },
         description: { type: String },
-        videoLink: { type: String } // URL to another video
+        additional_image: { type: String } 
     },
 }, {
     timestamps: true

@@ -7,58 +7,56 @@ exports.createProject = async (req, res) => {
         const { projectName, projectShortDescription, sections, gallery, projectDetails, additionalMedia, projectType, type_description } = req.body;
         const project_slug = projectName.toLowerCase().replace(/ /g, '-');
 
-        // Separate project image and gallery images
         const projectImage = req.files.find(file => file.fieldname === 'projectImage');
         const galleryImages = req.files.filter(file => file.fieldname === 'galleryImages');
+        const additionalImage = req.files.find(file => file.fieldname === 'additionalImage'); 
 
-        // Initialize projectTypeRecord
         let projectTypeRecord;
 
         if (projectType) {
-            // Check if the projectType is a valid ObjectId
             if (mongoose.Types.ObjectId.isValid(projectType)) {
-                // Check if the project type exists (existing type)
                 projectTypeRecord = await ProjectType.findOne({ _id: projectType });
 
                 if (!projectTypeRecord) {
                     return res.status(400).json({ success: false, message: 'Invalid project type' });
                 }
             } else {
-                // If projectType is not a valid ObjectId, assume it's a new type (string value for new project type)
                 if (!type_description) {
                     return res.status(400).json({ success: false, message: 'Type description is required for new project types' });
                 }
 
-                // Create a new project type if it doesn't exist
                 projectTypeRecord = new ProjectType({
-                    project_type: projectType, // This is the name for new type
+                    project_type: projectType,
                     type_description
                 });
                 await projectTypeRecord.save();
             }
         }
 
-        // Ensure projectTypeRecord is defined
         if (!projectTypeRecord) {
             return res.status(400).json({ success: false, message: 'Project type is required' });
         }
 
-        // Upload project image to Cloudinary
         const projectImageUpload = await uploadToCloudinary(projectImage.buffer, 'project-images');
 
-        // Upload gallery images to Cloudinary
         const galleryImagesUpload = await Promise.all(galleryImages.map(async (file) => {
             const result = await uploadToCloudinary(file.buffer, 'project-images');
             return result.secure_url;
         }));
 
-        // Parse JSON fields
+        let additionalImageUpload;
+        if (additionalImage) {
+            additionalImageUpload = await uploadToCloudinary(additionalImage.buffer, 'additional-media-images');
+        }
+
         const parsedSections = JSON.parse(sections);
         const parsedGallery = JSON.parse(gallery);
         const parsedProjectDetails = JSON.parse(projectDetails);
         const parsedAdditionalMedia = JSON.parse(additionalMedia);
 
-        // Create new project
+        parsedAdditionalMedia.additional_image = additionalImageUpload ? additionalImageUpload.secure_url : null;
+        delete parsedAdditionalMedia.videoURL;
+
         const project = new Project({
             projectName,
             projectShortDescription,
@@ -75,7 +73,7 @@ exports.createProject = async (req, res) => {
                 images: galleryImagesUpload
             },
             projectDetails: parsedProjectDetails,
-            additionalMedia: parsedAdditionalMedia,
+            additionalMedia: parsedAdditionalMedia, // Now includes additional_image instead of videoURL
             project_slug,
             projectType: projectTypeRecord._id // Use the ObjectId of the project type
         });
@@ -142,28 +140,27 @@ exports.updateProject = async (req, res) => {
 
         const projectImage = req.files.find(file => file.fieldname === 'projectImage');
         if (projectImage) {
-            if (project.projectImage) {
-            }
             const result = await uploadToCloudinary(projectImage.buffer, 'project-images');
             project.projectImage = result.secure_url;
+        } else if (!req.body.projectImage && project.projectImage) {
+            project.projectImage = null;
         }
 
         const galleryImages = req.files.filter(file => file.fieldname === 'galleryImages');
         if (galleryImages.length > 0) {
-            if (project.gallery && project.gallery.images) {
-                project.gallery.images.forEach(imgUrl => {
-                });
-            }
             const uploadedGalleryImages = await Promise.all(
                 galleryImages.map(file => uploadToCloudinary(file.buffer, 'gallery-images'))
             );
             project.gallery.images = uploadedGalleryImages.map(result => result.secure_url);
+        } else if (!req.body.galleryImages && project.gallery && project.gallery.images) {
+            project.gallery.images = [];
         }
 
         if (projectName) {
             project.projectName = projectName;
             project.project_slug = projectName.toLowerCase().replace(/ /g, '-');
         }
+
         if (projectShortDescription) project.projectShortDescription = projectShortDescription;
 
         if (sections) {
@@ -202,15 +199,22 @@ exports.updateProject = async (req, res) => {
 
         if (additionalMedia) {
             const parsedAdditionalMedia = JSON.parse(additionalMedia);
+            const additionalImage = req.files.find(file => file.fieldname === 'additionalImage');
+            let additionalImageURL = null;
+            
+            if (additionalImage) {
+                const result = await uploadToCloudinary(additionalImage.buffer, 'additional-media-images');
+                additionalImageURL = result.secure_url;
+            }
+
             project.additionalMedia = {
                 title: parsedAdditionalMedia.title,
                 headingDescription: parsedAdditionalMedia.headingDescription,
                 description: parsedAdditionalMedia.description,
-                videoLink: parsedAdditionalMedia.videoLink
+                additional_image: additionalImageURL || parsedAdditionalMedia.additional_image 
             };
         }
 
-        // Save the updated project
         const updatedProject = await project.save();
         res.status(200).json({ success: true, message: 'Project updated successfully', data: updatedProject });
     } catch (err) {
@@ -218,7 +222,6 @@ exports.updateProject = async (req, res) => {
         res.status(500).json({ success: false, message: 'Failed to update project', error: err.message });
     }
 };
-
 
 // Delete a project
 exports.deleteProject = async (req, res) => {
