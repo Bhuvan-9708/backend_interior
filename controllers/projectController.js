@@ -75,9 +75,9 @@ exports.createProject = async (req, res) => {
                 images: galleryImagesUpload
             },
             projectDetails: parsedProjectDetails,
-            additionalMedia: parsedAdditionalMedia, 
+            additionalMedia: parsedAdditionalMedia,
             project_slug,
-            projectType: projectTypeRecord._id 
+            projectType: projectTypeRecord._id
         });
 
         const newProject = await project.save();
@@ -140,31 +140,42 @@ exports.updateProject = async (req, res) => {
         const project = await Project.findById(id);
         if (!project) return res.status(404).json({ success: false, message: 'Project not found' });
 
+        // Handle project image upload or reset
         const projectImage = req.files.find(file => file.fieldname === 'projectImage');
         if (projectImage) {
             const result = await uploadToCloudinary(projectImage.buffer, 'project-images');
             project.projectImage = result.secure_url;
-        } else if (!req.body.projectImage && project.projectImage) {
-            project.projectImage = null;
+        } else if (!req.body.projectImage) {
+            project.projectImage = null; // Reset if projectImage is not provided
         }
 
+        // Handle gallery images
         const galleryImages = req.files.filter(file => file.fieldname === 'galleryImages');
         if (galleryImages.length > 0) {
             const uploadedGalleryImages = await Promise.all(
                 galleryImages.map(file => uploadToCloudinary(file.buffer, 'gallery-images'))
             );
-            project.gallery.images = uploadedGalleryImages.map(result => result.secure_url);
-        } else if (!req.body.galleryImages && project.gallery && project.gallery.images) {
-            project.gallery.images = [];
+            // Update existing images with new images
+            project.gallery.images = [
+                ...project.gallery.images, // Keep existing images
+                ...uploadedGalleryImages.map(result => result.secure_url) // Add new images
+            ];
         }
 
+        // Check if gallery images should be removed (if provided)
+        if (req.body.removeGalleryImages) {
+            const imagesToRemove = JSON.parse(req.body.removeGalleryImages); // Expecting an array of image URLs to remove
+            project.gallery.images = project.gallery.images.filter(image => !imagesToRemove.includes(image));
+        }
+
+        // Update project details
         if (projectName) {
             project.projectName = projectName;
             project.project_slug = projectName.toLowerCase().replace(/ /g, '-');
         }
-
         if (projectShortDescription) project.projectShortDescription = projectShortDescription;
 
+        // Update sections
         if (sections) {
             const parsedSections = JSON.parse(sections);
             project.sections = {
@@ -184,12 +195,14 @@ exports.updateProject = async (req, res) => {
             };
         }
 
+        // Update gallery headings
         if (gallery) {
             const parsedGallery = JSON.parse(gallery);
             project.gallery.heading = parsedGallery.heading;
             project.gallery.subheading = parsedGallery.subheading;
         }
 
+        // Update project details
         if (projectDetails) {
             const parsedProjectDetails = JSON.parse(projectDetails);
             project.projectDetails = {
@@ -199,6 +212,7 @@ exports.updateProject = async (req, res) => {
             };
         }
 
+        // Handle additional media
         if (additionalMedia) {
             const parsedAdditionalMedia = JSON.parse(additionalMedia);
             const additionalImage = req.files.find(file => file.fieldname === 'additionalImage');
@@ -213,7 +227,7 @@ exports.updateProject = async (req, res) => {
                 title: parsedAdditionalMedia.title,
                 headingDescription: parsedAdditionalMedia.headingDescription,
                 description: parsedAdditionalMedia.description,
-                additional_image: additionalImageURL || parsedAdditionalMedia.additional_image
+                additional_image: additionalImageURL || parsedAdditionalMedia.additional_image // Use new image if uploaded
             };
         }
 
