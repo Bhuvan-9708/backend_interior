@@ -3,13 +3,16 @@ const ProjectType = require('../model/projectType');
 const { uploadToCloudinary } = require("../middleware/cloudinaryConfig.js");
 const mongoose = require('mongoose');
 exports.createProject = async (req, res) => {
+    console.log('Request Body:', req.body);
+    console.log('Uploaded Files:', req.files);
+
     try {
         const { projectName, projectShortDescription, sections, gallery, projectDetails, additionalMedia, projectType, type_description } = req.body;
         const project_slug = projectName.toLowerCase().replace(/ /g, '-');
 
         const projectImage = req.files.find(file => file.fieldname === 'projectImage');
         const galleryImages = req.files.filter(file => file.fieldname === 'galleryImages');
-        const additionalImage = req.files.find(file => file.fieldname === 'additionalImage'); 
+        const additionalImage = req.files.find(file => file.fieldname === 'additionalImage');
 
         let projectTypeRecord;
 
@@ -44,18 +47,17 @@ exports.createProject = async (req, res) => {
             return result.secure_url;
         }));
 
-        let additionalImageUpload;
+        let additionalImageUpload = null;
         if (additionalImage) {
             additionalImageUpload = await uploadToCloudinary(additionalImage.buffer, 'additional-media-images');
         }
 
         const parsedSections = JSON.parse(sections);
         const parsedGallery = JSON.parse(gallery);
-        const parsedProjectDetails = JSON.parse(projectDetails);
-        const parsedAdditionalMedia = JSON.parse(additionalMedia);
+        const parsedProjectDetails = projectDetails ? JSON.parse(projectDetails) : {};
+        const parsedAdditionalMedia = additionalMedia ? JSON.parse(additionalMedia) : {};
 
         parsedAdditionalMedia.additional_image = additionalImageUpload ? additionalImageUpload.secure_url : null;
-        delete parsedAdditionalMedia.videoURL;
 
         const project = new Project({
             projectName,
@@ -73,9 +75,9 @@ exports.createProject = async (req, res) => {
                 images: galleryImagesUpload
             },
             projectDetails: parsedProjectDetails,
-            additionalMedia: parsedAdditionalMedia, // Now includes additional_image instead of videoURL
+            additionalMedia: parsedAdditionalMedia, 
             project_slug,
-            projectType: projectTypeRecord._id // Use the ObjectId of the project type
+            projectType: projectTypeRecord._id 
         });
 
         const newProject = await project.save();
@@ -201,7 +203,7 @@ exports.updateProject = async (req, res) => {
             const parsedAdditionalMedia = JSON.parse(additionalMedia);
             const additionalImage = req.files.find(file => file.fieldname === 'additionalImage');
             let additionalImageURL = null;
-            
+
             if (additionalImage) {
                 const result = await uploadToCloudinary(additionalImage.buffer, 'additional-media-images');
                 additionalImageURL = result.secure_url;
@@ -211,7 +213,7 @@ exports.updateProject = async (req, res) => {
                 title: parsedAdditionalMedia.title,
                 headingDescription: parsedAdditionalMedia.headingDescription,
                 description: parsedAdditionalMedia.description,
-                additional_image: additionalImageURL || parsedAdditionalMedia.additional_image 
+                additional_image: additionalImageURL || parsedAdditionalMedia.additional_image
             };
         }
 
