@@ -16,7 +16,9 @@ exports.createProject = async (req, res) => {
 
         let projectTypeRecord;
 
+        // Check if a projectType is provided (either existing or new)
         if (projectType) {
+            // Check if projectType is a valid ObjectId (existing type)
             if (mongoose.Types.ObjectId.isValid(projectType)) {
                 projectTypeRecord = await ProjectType.findOne({ _id: projectType });
 
@@ -24,22 +26,24 @@ exports.createProject = async (req, res) => {
                     return res.status(400).json({ success: false, message: 'Invalid project type' });
                 }
             } else {
-                if (!type_description) {
+                // If projectType is a new type, type_description must be provided
+                if (!type_description || type_description.trim() === '') {
                     return res.status(400).json({ success: false, message: 'Type description is required for new project types' });
                 }
 
+                // Create new project type if description is provided
                 projectTypeRecord = new ProjectType({
-                    project_type: projectType,
-                    type_description
+                    project_type: projectType, // This is the new project type name
+                    type_description // Ensure this is included when creating a new type
                 });
                 await projectTypeRecord.save();
             }
-        }
-
-        if (!projectTypeRecord) {
+        } else {
+            // If no project type is provided, return an error
             return res.status(400).json({ success: false, message: 'Project type is required' });
         }
 
+        // Proceed to upload project image, gallery, and additional media
         const projectImageUpload = await uploadToCloudinary(projectImage.buffer, 'project-images');
 
         const galleryImagesUpload = await Promise.all(galleryImages.map(async (file) => {
@@ -52,6 +56,7 @@ exports.createProject = async (req, res) => {
             additionalImageUpload = await uploadToCloudinary(additionalImage.buffer, 'additional-media-images');
         }
 
+        // Parse the sections, gallery, and additional details
         const parsedSections = JSON.parse(sections);
         const parsedGallery = JSON.parse(gallery);
         const parsedProjectDetails = projectDetails ? JSON.parse(projectDetails) : {};
@@ -59,6 +64,7 @@ exports.createProject = async (req, res) => {
 
         parsedAdditionalMedia.additional_image = additionalImageUpload ? additionalImageUpload.secure_url : null;
 
+        // Create the project in the database
         const project = new Project({
             projectName,
             projectShortDescription,
@@ -77,7 +83,7 @@ exports.createProject = async (req, res) => {
             projectDetails: parsedProjectDetails,
             additionalMedia: parsedAdditionalMedia,
             project_slug,
-            projectType: projectTypeRecord._id
+            projectType: projectTypeRecord._id // Associate the project with the project type
         });
 
         const newProject = await project.save();
@@ -88,6 +94,7 @@ exports.createProject = async (req, res) => {
         res.status(500).json({ success: false, message: 'Failed to create project', error: err.message });
     }
 };
+
 
 // Get all projects
 exports.handleProjects = async (req, res) => {
