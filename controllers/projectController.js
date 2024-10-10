@@ -108,8 +108,6 @@ exports.createProject = async (req, res) => {
     }
 };
 
-
-
 // Get all projects
 exports.handleProjects = async (req, res) => {
     try {
