@@ -211,7 +211,6 @@ exports.verifyAdminOtp = async (req, res) => {
 
 // Login an admin
 exports.authAdmin = async (req, res) => {
-    console.log(req.body);
     const { email, password } = req.body;
 
     try {

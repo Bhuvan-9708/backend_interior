@@ -13,7 +13,6 @@ exports.submitCareerForm = async (req, res) => {
 
         let uploadedFileUrl = null;
         if (file) {
-            console.log("File details: ", file);
             const uploadResult = await uploadToCloudinary(file.buffer, 'career_resumes');
             uploadedFileUrl = uploadResult.secure_url;  
         }

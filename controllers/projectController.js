@@ -5,11 +5,14 @@ const mongoose = require('mongoose');
 
 
 exports.createProject = async (req, res) => {
-    console.log('Request Body:', req.body);
-    console.log('Uploaded Files:', req.files);
-
     try {
         const { projectName, projectShortDescription, sections, gallery, projectDetails, additionalMedia, projectType, type_description } = req.body;
+
+        // Validate required fields
+        if (!projectName) {
+            return res.status(400).json({ success: false, message: 'Project name is required' });
+        }
+
         const project_slug = projectName.toLowerCase().replace(/ /g, '-');
 
         // Validate projectImage and galleryImages
@@ -21,13 +24,13 @@ exports.createProject = async (req, res) => {
 
         // Check if a projectType is provided (either existing or new)
         if (projectType) {
-            
+
             // Check if projectType is a valid ObjectId (existing type)
             if (mongoose.Types.ObjectId.isValid(projectType)) {
                 projectTypeRecord = await ProjectType.findOne({ _id: projectType });
 
                 if (!projectTypeRecord) {
-                    return res.status(400).json({ success: false, message: 'Invalid project type' });
+                    return res.status(400).json({ success: false, message: `Invalid project type: ${projectType}` });
                 }
             } else {
                 // If projectType is a new type, type_description must be provided
@@ -53,7 +56,7 @@ exports.createProject = async (req, res) => {
             projectImageUpload = await uploadToCloudinary(projectImage.buffer, 'project-images');
         }
 
-        const galleryImagesUpload = galleryImages.length > 0 
+        const galleryImagesUpload = galleryImages.length > 0
             ? await Promise.all(galleryImages.map(async (file) => {
                 const result = await uploadToCloudinary(file.buffer, 'project-images');
                 return result.secure_url;
@@ -107,6 +110,7 @@ exports.createProject = async (req, res) => {
         res.status(500).json({ success: false, message: 'Failed to create project', error: err.message });
     }
 };
+
 
 // Get all projects
 exports.handleProjects = async (req, res) => {
