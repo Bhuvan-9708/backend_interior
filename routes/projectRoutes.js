@@ -1,8 +1,7 @@
 const express = require('express');
 const router = express.Router();
-// const upload = require('../middleware/upload');
+const upload = require('../middleware/upload');
 const ProjectController = require("../controllers/projectController");
-const { upload } = require('../middleware/cloudinaryConfig.js');
 
 router.get('/projects/:slug?', ProjectController.handleProjects);
 router.get('/projects', ProjectController.handleProjects);
