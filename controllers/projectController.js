@@ -145,30 +145,27 @@ exports.updateProject = async (req, res) => {
         const { id } = req.params;
         const { projectName, projectShortDescription, sections, gallery, projectDetails, additionalMedia } = req.body;
 
+        // Find the existing project by ID
         const project = await Project.findById(id);
         if (!project) return res.status(404).json({ success: false, message: 'Project not found' });
 
-        // Handle project image upload or reset
+        // Update the project image if provided
         const projectImage = req.files.find(file => file.fieldname === 'projectImage');
         if (projectImage) {
-            project.projectImage = projectImage.path; // Update with the new image path
+            project.projectImage = projectImage.path; // Use local file path
         } else if (req.body.removeProjectImage) {
-            project.projectImage = null; // Reset if projectImage should be removed
+            project.projectImage = null; // Reset project image if requested
         }
 
-        // Handle gallery images
+        // Handle gallery images if new ones are uploaded
         const galleryImages = req.files.filter(file => file.fieldname === 'galleryImages');
         if (galleryImages.length > 0) {
-            const uploadedGalleryImages = await Promise.all(
-                galleryImages.map(file => uploadToCloudinary(file.buffer, 'gallery-images'))
-            );
-            // Update existing images with new images
-            project.gallery.images.push(...uploadedGalleryImages.map(result => result.secure_url)); // Add new images
+            project.gallery.images.push(...galleryImages.map(file => file.path)); // Add new images
         }
 
-        // Check if gallery images should be removed (if provided)
+        // Remove specific gallery images if requested
         if (req.body.removeGalleryImages) {
-            const imagesToRemove = JSON.parse(req.body.removeGalleryImages); // Expecting an array of image URLs to remove
+            const imagesToRemove = JSON.parse(req.body.removeGalleryImages); // Expecting an array of image paths to remove
             project.gallery.images = project.gallery.images.filter(image => !imagesToRemove.includes(image));
         }
 
@@ -179,7 +176,7 @@ exports.updateProject = async (req, res) => {
         }
         if (projectShortDescription) project.projectShortDescription = projectShortDescription;
 
-        // Update sections
+        // Update sections if provided
         if (sections) {
             const parsedSections = JSON.parse(sections);
             project.sections = {
@@ -199,14 +196,13 @@ exports.updateProject = async (req, res) => {
             };
         }
 
-        // Update gallery headings
+        // Update gallery headings if provided
         if (gallery) {
             const parsedGallery = JSON.parse(gallery);
             project.gallery.heading = parsedGallery.heading || project.gallery.heading;
             project.gallery.subheading = parsedGallery.subheading || project.gallery.subheading;
         }
 
-        // Update project details
         if (projectDetails) {
             const parsedProjectDetails = JSON.parse(projectDetails);
             project.projectDetails = {
@@ -216,25 +212,24 @@ exports.updateProject = async (req, res) => {
             };
         }
 
-        // Handle additional media
+        // Handle additional media updates
         if (additionalMedia) {
             const parsedAdditionalMedia = JSON.parse(additionalMedia);
             const additionalImage = req.files.find(file => file.fieldname === 'additionalImage');
-            let additionalImageURL = null;
 
             if (additionalImage) {
-                const result = await uploadToCloudinary(additionalImage.buffer, 'additional-media-images');
-                additionalImageURL = result.secure_url;
+                project.additionalMedia.additional_image = additionalImage.path; // Update with the new image path
             }
 
             project.additionalMedia = {
                 title: parsedAdditionalMedia.title || project.additionalMedia.title,
                 headingDescription: parsedAdditionalMedia.headingDescription || project.additionalMedia.headingDescription,
                 description: parsedAdditionalMedia.description || project.additionalMedia.description,
-                additional_image: additionalImageURL || parsedAdditionalMedia.additional_image || project.additionalMedia.additional_image // Use new image if uploaded
+                additional_image: project.additionalMedia.additional_image // Keep the existing image if no new image is provided
             };
         }
 
+        // Save the updated project
         const updatedProject = await project.save();
         res.status(200).json({ success: true, message: 'Project updated successfully', data: updatedProject });
     } catch (err) {
